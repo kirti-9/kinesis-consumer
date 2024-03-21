@@ -1,9 +1,15 @@
 import uuid
-
 import boto3
 import json
 import logging
 from botocore.exceptions import ClientError
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from config.aws_config import S3Config, DataStreamConfig
+
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 
 class KinesisConsumer:
@@ -12,12 +18,8 @@ class KinesisConsumer:
         self.region_name = region_name
         self.kinesis_client = boto3.client('kinesis', region_name=self.region_name)
         self.logger = logging.getLogger('KinesisConsumer')
-        self.logger.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        self.logger.addHandler(ch)
 
+    # consume_and_transform reads records from each shard, transforms and sends it for warehousing.
     def consume_and_transform(self):
         try:
             # Get the shard iterator for the latest record in the stream
@@ -29,12 +31,12 @@ class KinesisConsumer:
             shard_iterator = shard_iterator_response['ShardIterator']
 
             while True:
+                self.logger.info(f'Processing shard {shard_iterator["ShardIteratorId"]}')
                 # Get records from the stream
                 records_response = self.kinesis_client.get_records(ShardIterator=shard_iterator)
                 records = records_response['Records']
 
                 for record in records:
-                    # Decode and parse the record
                     data = json.loads(record['Data'])
                     try:
                         # Transform user_id from string to int
@@ -53,30 +55,30 @@ class KinesisConsumer:
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}")
 
+    # warehouse_data uploads the data to s3
     def warehouse_data(self, data):
-        # Assuming S3 bucket name and key prefix
-        s3_bucket = 'aforb-consumer-data'
-        key_prefix = 'mandir-event-records/'
-
+        config = S3Config()
         # Serialize the data as JSON
         json_data = json.dumps(data)
 
         # Upload data to S3
         s3_client = boto3.client('s3')
         try:
-            s3_client.put_object(Bucket=s3_bucket, Key=f"{key_prefix}{uuid.uuid4()}.json", Body=json_data)
+            self.logger.info(f"Warehousing data to s3 with key {config.key_prefix}{uuid.uuid4()}")
+            s3_client.put_object(Bucket=config.s3_bucket, Key=f"{config.key_prefix}{uuid.uuid4()}.json", Body=json_data)
         except ClientError as e:
             self.logger.error(f"Failed to warehouse data to S3: {e}")
 
 
 def main():
-    stream_name = 'AForB_callevents'
-    region_name = 'eu-north-1'
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
+    config = DataStreamConfig()
 
     # Initialize consumer
-    consumer = KinesisConsumer(stream_name, region_name)
+    consumer = KinesisConsumer(config.stream_name, config.region)
 
-    # Start consuming and transforming data
+    # Start consuming and transforming data continuously
     consumer.consume_and_transform()
 
 
