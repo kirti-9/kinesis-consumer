@@ -31,7 +31,7 @@ class KinesisConsumer:
             shard_iterator = shard_iterator_response['ShardIterator']
 
             while True:
-                self.logger.info(f'Processing shard {shard_iterator["ShardIteratorId"]}')
+                self.logger.info('Processing shard {shard_iterator}')
                 # Get records from the stream
                 records_response = self.kinesis_client.get_records(ShardIterator=shard_iterator)
                 records = records_response['Records']
