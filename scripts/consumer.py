@@ -31,7 +31,6 @@ class KinesisConsumer:
             shard_iterator = shard_iterator_response['ShardIterator']
 
             while True:
-                self.logger.info('Processing shard {shard_iterator}')
                 # Get records from the stream
                 records_response = self.kinesis_client.get_records(ShardIterator=shard_iterator)
                 records = records_response['Records']
@@ -64,7 +63,7 @@ class KinesisConsumer:
         # Upload data to S3
         s3_client = boto3.client('s3')
         try:
-            self.logger.info(f"Warehousing data to s3 with key {config.key_prefix}{uuid.uuid4()}")
+            self.logger.info(f"Warehousing data to s3: {config.key_prefix}{uuid.uuid4()}")
             s3_client.put_object(Bucket=config.s3_bucket, Key=f"{config.key_prefix}{uuid.uuid4()}.json", Body=json_data)
         except ClientError as e:
             self.logger.error(f"Failed to warehouse data to S3: {e}")
