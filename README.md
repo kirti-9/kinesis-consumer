@@ -35,8 +35,37 @@ The consumer script reads a shard iterator, presuming the use of the first shard
 > [!Note]
 > We've used the region `eu-north-1` for this project. If you're using any other region, make sure to change it in the code config.
 1. **Create IAM Role:** Create an IAM role with the following policies: 
-    -
-    - 
+
+    - For AWS Kinesis Access
+      > {"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "VisualEditor0",
+			"Effect": "Allow",
+			"Action": [
+				"kinesis:PutRecord",
+				"kinesis:CreateStream",
+				"kinesis:GetShardIterator",
+				"kinesis:GetRecords",
+				"kinesis:DescribeStream"
+			],
+			"Resource": "arn:aws:kinesis:eu-north-1:076957296148:stream/AForB_callevents"
+		}
+	]
+}
+
+    - For Amazon S3 Access
+      > {
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "VisualEditor0",
+			"Effect": "Allow",
+			"Action": "s3:PutObject",
+			"Resource": "arn:aws:s3:::*/*"
+		}
+	]
+}
 3. **Launch EC2 Instance:** Deploy an EC2 instance and associate the IAM role with it.
 4. **Create S3 Bucket:** Create an S3 bucket named `aforb-consumer-data`.
 5. **Clone Repositories:** Clone both the kinesis-producer and kinesis-consumer repositories onto the EC2 instance.
